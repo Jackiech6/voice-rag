@@ -16,7 +16,7 @@ class EmbeddingService:
             use_cache: Whether to use embedding cache
         """
         if not config.OPENAI_API_KEY:
-            raise ValueError("OPENAI_API_KEY environment variable is required. Please set it in .env file.")
+            raise ValueError("OPENAI_API_KEY environment variable is required. Please set it in Railway Variables (Settings → Variables) or in your .env file for local development.")
         self.client = OpenAI(api_key=config.OPENAI_API_KEY)
         self.model = config.EMBEDDING_MODEL
         self.cache = EmbeddingCache() if use_cache else None

@@ -11,7 +11,7 @@ class TranscriptionService:
     def __init__(self):
         """Initialize OpenAI client."""
         if not config.OPENAI_API_KEY:
-            raise ValueError("OPENAI_API_KEY environment variable is required. Please set it in .env file.")
+            raise ValueError("OPENAI_API_KEY environment variable is required. Please set it in Railway Variables (Settings → Variables) or in your .env file for local development.")
         self.client = OpenAI(api_key=config.OPENAI_API_KEY)
         self.model = "whisper-1"  # OpenAI Whisper model
     
