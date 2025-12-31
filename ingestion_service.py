@@ -131,20 +131,8 @@ class IngestionService:
             # Create chunks
             chunks = self.processor.create_chunks(document_data, document_id=0)
             
-            # Save document to database
-            doc = Document(
-                title=document_data["title"],
-                file_path=file_path_str,
-                file_hash=file_hash,
-                created_at=datetime.now().isoformat()
-            )
-            db_session.add(doc)
-            db_session.commit()
-            db_session.refresh(doc)
-            
-            document_id = doc.id
-            
-            # Generate embeddings with error handling
+            # Generate embeddings BEFORE saving document to database
+            # This ensures we don't create documents with 0 chunks if embedding fails
             try:
                 chunk_texts = [chunk["text"] for chunk in chunks]
                 embeddings = self.embedding_service.generate_embeddings_batch(chunk_texts)
@@ -175,6 +163,19 @@ class IngestionService:
                     "message": f"Error generating embeddings: {str(e)}",
                     "error": "EMBEDDING_ERROR"
                 }
+            
+            # Only save document to database after embeddings are successfully generated
+            doc = Document(
+                title=document_data["title"],
+                file_path=file_path_str,
+                file_hash=file_hash,
+                created_at=datetime.now().isoformat()
+            )
+            db_session.add(doc)
+            db_session.commit()
+            db_session.refresh(doc)
+            
+            document_id = doc.id
             
             # Prepare chunks for vector store
             vector_chunks = []
