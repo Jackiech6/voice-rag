@@ -399,6 +399,10 @@ async def upload_document(
                 status_code = 400
             elif result["error"] == "PROCESSING_ERROR":
                 status_code = 400  # Bad file format
+            elif result["error"] == "CONNECTION_ERROR":
+                status_code = 503  # Service unavailable
+            elif result["error"] == "API_ERROR":
+                status_code = 502  # Bad gateway
             else:
                 status_code = 500
             raise HTTPException(status_code=status_code, detail=result["message"])

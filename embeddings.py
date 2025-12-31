@@ -37,12 +37,23 @@ class EmbeddingService:
             if cached is not None:
                 return cached
         
-        # Generate new embedding
-        response = self.client.embeddings.create(
-            model=self.model,
-            input=text
-        )
-        embedding = response.data[0].embedding
+        # Generate new embedding with error handling
+        try:
+            response = self.client.embeddings.create(
+                model=self.model,
+                input=text
+            )
+            embedding = response.data[0].embedding
+        except Exception as e:
+            error_msg = str(e)
+            if "connection" in error_msg.lower() or "timeout" in error_msg.lower():
+                raise ConnectionError(f"Failed to connect to OpenAI API: {error_msg}. Please check your internet connection and API key.")
+            elif "api key" in error_msg.lower() or "authentication" in error_msg.lower():
+                raise ValueError(f"OpenAI API authentication failed: {error_msg}. Please check your OPENAI_API_KEY.")
+            elif "rate limit" in error_msg.lower():
+                raise ValueError(f"OpenAI API rate limit exceeded: {error_msg}. Please try again in a moment.")
+            else:
+                raise ValueError(f"OpenAI API error: {error_msg}")
         
         # Cache the result
         if self.cache:
@@ -63,9 +74,20 @@ class EmbeddingService:
         if not texts:
             return []
         
-        response = self.client.embeddings.create(
-            model=self.model,
-            input=texts
-        )
-        return [item.embedding for item in response.data]
+        try:
+            response = self.client.embeddings.create(
+                model=self.model,
+                input=texts
+            )
+            return [item.embedding for item in response.data]
+        except Exception as e:
+            error_msg = str(e)
+            if "connection" in error_msg.lower() or "timeout" in error_msg.lower():
+                raise ConnectionError(f"Failed to connect to OpenAI API: {error_msg}. Please check your internet connection and API key.")
+            elif "api key" in error_msg.lower() or "authentication" in error_msg.lower():
+                raise ValueError(f"OpenAI API authentication failed: {error_msg}. Please check your OPENAI_API_KEY.")
+            elif "rate limit" in error_msg.lower():
+                raise ValueError(f"OpenAI API rate limit exceeded: {error_msg}. Please try again in a moment.")
+            else:
+                raise ValueError(f"OpenAI API error: {error_msg}")
 

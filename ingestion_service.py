@@ -144,9 +144,37 @@ class IngestionService:
             
             document_id = doc.id
             
-            # Generate embeddings
-            chunk_texts = [chunk["text"] for chunk in chunks]
-            embeddings = self.embedding_service.generate_embeddings_batch(chunk_texts)
+            # Generate embeddings with error handling
+            try:
+                chunk_texts = [chunk["text"] for chunk in chunks]
+                embeddings = self.embedding_service.generate_embeddings_batch(chunk_texts)
+            except ConnectionError as e:
+                return {
+                    "success": False,
+                    "document_id": None,
+                    "title": None,
+                    "chunks_created": 0,
+                    "message": f"Connection error: {str(e)}. Please check your internet connection and try again.",
+                    "error": "CONNECTION_ERROR"
+                }
+            except ValueError as e:
+                return {
+                    "success": False,
+                    "document_id": None,
+                    "title": None,
+                    "chunks_created": 0,
+                    "message": str(e),
+                    "error": "API_ERROR"
+                }
+            except Exception as e:
+                return {
+                    "success": False,
+                    "document_id": None,
+                    "title": None,
+                    "chunks_created": 0,
+                    "message": f"Error generating embeddings: {str(e)}",
+                    "error": "EMBEDDING_ERROR"
+                }
             
             # Prepare chunks for vector store
             vector_chunks = []
