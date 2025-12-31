@@ -46,8 +46,11 @@ transcription_service = TranscriptionService()
 ingestion_service = IngestionService()
 deletion_service = DeletionService()
 
-# Initialize database
-init_db()
+# Initialize database (with error handling)
+try:
+    init_db()
+except Exception as e:
+    print(f"Warning: Database initialization error (may be OK if already exists): {e}")
 
 
 class QueryRequest(BaseModel):
