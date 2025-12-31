@@ -3,7 +3,8 @@ from openai import OpenAI
 import config
 from typing import List, Optional
 from cache import EmbeddingCache
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type, RetryError
+from openai import APIConnectionError, APITimeoutError, APIError
 
 
 class EmbeddingService:
@@ -25,16 +26,20 @@ class EmbeddingService:
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=2, max=10),
-        retry=retry_if_exception_type((ConnectionError, Exception)),
+        retry=retry_if_exception_type((APIConnectionError, APITimeoutError, ConnectionError)),
         reraise=True
     )
     def _generate_embedding_with_retry(self, text: str) -> List[float]:
         """Internal method with retry logic for generating embeddings."""
-        response = self.client.embeddings.create(
-            model=self.model,
-            input=text
-        )
-        return response.data[0].embedding
+        try:
+            response = self.client.embeddings.create(
+                model=self.model,
+                input=text
+            )
+            return response.data[0].embedding
+        except (APIConnectionError, APITimeoutError) as e:
+            # Convert to ConnectionError for consistent handling
+            raise ConnectionError(f"OpenAI API connection error: {str(e)}") from e
     
     def generate_embedding(self, text: str) -> List[float]:
         """
@@ -55,10 +60,21 @@ class EmbeddingService:
         # Generate new embedding with retry logic and error handling
         try:
             embedding = self._generate_embedding_with_retry(text)
+        except ConnectionError as e:
+            # Connection errors after retries
+            raise ConnectionError(f"Failed to connect to OpenAI API after retries: {str(e)}. Please check your internet connection and API key.")
+        except APIError as e:
+            error_msg = str(e)
+            if "api key" in error_msg.lower() or "authentication" in error_msg.lower() or "401" in error_msg or "403" in error_msg:
+                raise ValueError(f"OpenAI API authentication failed: {error_msg}. Please check your OPENAI_API_KEY.")
+            elif "rate limit" in error_msg.lower() or "429" in error_msg:
+                raise ValueError(f"OpenAI API rate limit exceeded: {error_msg}. Please try again in a moment.")
+            else:
+                raise ValueError(f"OpenAI API error: {error_msg}")
         except Exception as e:
             error_msg = str(e)
-            if "connection" in error_msg.lower() or "timeout" in error_msg.lower() or isinstance(e, ConnectionError):
-                raise ConnectionError(f"Failed to connect to OpenAI API after retries: {error_msg}. Please check your internet connection and API key.")
+            if "connection" in error_msg.lower() or "timeout" in error_msg.lower():
+                raise ConnectionError(f"Failed to connect to OpenAI API: {error_msg}. Please check your internet connection and API key.")
             elif "api key" in error_msg.lower() or "authentication" in error_msg.lower():
                 raise ValueError(f"OpenAI API authentication failed: {error_msg}. Please check your OPENAI_API_KEY.")
             elif "rate limit" in error_msg.lower():
@@ -75,16 +91,20 @@ class EmbeddingService:
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=2, max=10),
-        retry=retry_if_exception_type((ConnectionError, Exception)),
+        retry=retry_if_exception_type((APIConnectionError, APITimeoutError, ConnectionError)),
         reraise=True
     )
     def _generate_embeddings_batch_with_retry(self, texts: List[str]) -> List[List[float]]:
         """Internal method with retry logic for generating batch embeddings."""
-        response = self.client.embeddings.create(
-            model=self.model,
-            input=texts
-        )
-        return [item.embedding for item in response.data]
+        try:
+            response = self.client.embeddings.create(
+                model=self.model,
+                input=texts
+            )
+            return [item.embedding for item in response.data]
+        except (APIConnectionError, APITimeoutError) as e:
+            # Convert to ConnectionError for consistent handling
+            raise ConnectionError(f"OpenAI API connection error: {str(e)}") from e
     
     def generate_embeddings_batch(self, texts: List[str]) -> List[List[float]]:
         """
@@ -101,10 +121,21 @@ class EmbeddingService:
         
         try:
             return self._generate_embeddings_batch_with_retry(texts)
+        except ConnectionError as e:
+            # Connection errors after retries
+            raise ConnectionError(f"Failed to connect to OpenAI API after retries: {str(e)}. Please check your internet connection and API key.")
+        except APIError as e:
+            error_msg = str(e)
+            if "api key" in error_msg.lower() or "authentication" in error_msg.lower() or "401" in error_msg or "403" in error_msg:
+                raise ValueError(f"OpenAI API authentication failed: {error_msg}. Please check your OPENAI_API_KEY.")
+            elif "rate limit" in error_msg.lower() or "429" in error_msg:
+                raise ValueError(f"OpenAI API rate limit exceeded: {error_msg}. Please try again in a moment.")
+            else:
+                raise ValueError(f"OpenAI API error: {error_msg}")
         except Exception as e:
             error_msg = str(e)
-            if "connection" in error_msg.lower() or "timeout" in error_msg.lower() or isinstance(e, ConnectionError):
-                raise ConnectionError(f"Failed to connect to OpenAI API after retries: {error_msg}. Please check your internet connection and API key.")
+            if "connection" in error_msg.lower() or "timeout" in error_msg.lower():
+                raise ConnectionError(f"Failed to connect to OpenAI API: {error_msg}. Please check your internet connection and API key.")
             elif "api key" in error_msg.lower() or "authentication" in error_msg.lower():
                 raise ValueError(f"OpenAI API authentication failed: {error_msg}. Please check your OPENAI_API_KEY.")
             elif "rate limit" in error_msg.lower():

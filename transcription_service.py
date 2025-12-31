@@ -1,5 +1,5 @@
 """Transcription service using OpenAI Whisper API."""
-from openai import OpenAI
+from openai import OpenAI, APIConnectionError, APITimeoutError, APIError
 import config
 from typing import Optional
 import io
@@ -48,6 +48,20 @@ class TranscriptionService:
                 "language": language or "en"
             }
         
+        except (APIConnectionError, APITimeoutError) as e:
+            raise ConnectionError(f"Failed to connect to OpenAI API: {str(e)}. Please check your internet connection and API key.")
+        except APIError as e:
+            error_msg = str(e)
+            if "api key" in error_msg.lower() or "authentication" in error_msg.lower() or "401" in error_msg or "403" in error_msg:
+                raise ValueError(f"OpenAI API authentication failed: {error_msg}. Please check your OPENAI_API_KEY.")
+            elif "rate limit" in error_msg.lower() or "429" in error_msg:
+                raise ValueError(f"OpenAI API rate limit exceeded: {error_msg}. Please try again in a moment.")
+            else:
+                raise ValueError(f"OpenAI API error: {error_msg}")
         except Exception as e:
-            raise ValueError(f"Transcription failed: {str(e)}")
+            error_msg = str(e)
+            if "connection" in error_msg.lower() or "timeout" in error_msg.lower():
+                raise ConnectionError(f"Failed to connect to OpenAI API: {error_msg}. Please check your internet connection and API key.")
+            else:
+                raise ValueError(f"Transcription failed: {error_msg}")
 
