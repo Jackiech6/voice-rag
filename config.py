@@ -24,6 +24,7 @@ DATABASE_PATH = os.getenv("DATABASE_PATH", "metadata.db")
 VECTOR_DB_PATH = os.getenv("VECTOR_DB_PATH", "chroma_db")
 
 # Server Configuration
+# Railway and other platforms set PORT environment variable
 HOST = os.getenv("HOST", "0.0.0.0")
-PORT = int(os.getenv("PORT", "8000"))
+PORT = int(os.getenv("PORT", os.getenv("RAILWAY_PORT", "8000")))
 
