@@ -38,13 +38,56 @@ static_dir = os.path.join(os.path.dirname(__file__), "static")
 if os.path.exists(static_dir):
     app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
-# Initialize services
-embedding_service = EmbeddingService()
-vector_store = VectorStore()
-llm_service = LLMService()
-transcription_service = TranscriptionService()
-ingestion_service = IngestionService()
-deletion_service = DeletionService()
+# Initialize services lazily (only when needed)
+# This prevents import errors if OPENAI_API_KEY is not set during startup
+embedding_service = None
+vector_store = None
+llm_service = None
+transcription_service = None
+ingestion_service = None
+deletion_service = None
+
+def get_embedding_service():
+    """Get or initialize embedding service."""
+    global embedding_service
+    if embedding_service is None:
+        embedding_service = EmbeddingService()
+    return embedding_service
+
+def get_vector_store():
+    """Get or initialize vector store."""
+    global vector_store
+    if vector_store is None:
+        vector_store = VectorStore()
+    return vector_store
+
+def get_llm_service():
+    """Get or initialize LLM service."""
+    global llm_service
+    if llm_service is None:
+        llm_service = LLMService()
+    return llm_service
+
+def get_transcription_service():
+    """Get or initialize transcription service."""
+    global transcription_service
+    if transcription_service is None:
+        transcription_service = TranscriptionService()
+    return transcription_service
+
+def get_ingestion_service():
+    """Get or initialize ingestion service."""
+    global ingestion_service
+    if ingestion_service is None:
+        ingestion_service = IngestionService()
+    return ingestion_service
+
+def get_deletion_service():
+    """Get or initialize deletion service."""
+    global deletion_service
+    if deletion_service is None:
+        deletion_service = DeletionService()
+    return deletion_service
 
 # Initialize database (with error handling)
 try:
@@ -162,7 +205,7 @@ async def transcribe(audio: UploadFile = File(...)):
             raise HTTPException(status_code=400, detail="Audio file is empty")
         
         # Transcribe audio
-        result = transcription_service.transcribe_audio(audio_bytes)
+        result = get_transcription_service().transcribe_audio(audio_bytes)
         
         return TranscribeResponse(
             transcript=result["transcript"],
@@ -198,7 +241,7 @@ async def query(request: QueryRequest):
     try:
         # Step 1: Generate query embedding
         try:
-            query_embedding = embedding_service.generate_embedding(query_text)
+            query_embedding = get_embedding_service().generate_embedding(query_text)
         except Exception as e:
             raise HTTPException(
                 status_code=500,
@@ -207,7 +250,7 @@ async def query(request: QueryRequest):
         
         # Step 2: Retrieve top-k chunks
         try:
-            retrieved_chunks = vector_store.search(query_embedding)
+            retrieved_chunks = get_vector_store().search(query_embedding)
         except Exception as e:
             raise HTTPException(
                 status_code=500,
@@ -238,7 +281,7 @@ async def query(request: QueryRequest):
         
         # Step 3: Generate answer with citations
         try:
-            result = llm_service.generate_answer(query_text, filtered_chunks)
+            result = get_llm_service().generate_answer(query_text, filtered_chunks)
         except Exception as e:
             # If LLM fails, return retrieved chunks with error message
             raise HTTPException(
@@ -337,7 +380,7 @@ async def upload_document(
             title = Path(original_filename).stem
         
         try:
-            result = ingestion_service.ingest_document(temp_path, custom_title=title, original_filename=original_filename)
+            result = get_ingestion_service().ingest_document(temp_path, custom_title=title, original_filename=original_filename)
         except Exception as e:
             # Clean up temp file on ingestion error
             if temp_path and Path(temp_path).exists():
@@ -453,7 +496,7 @@ async def delete_document(document_id: int):
         Deletion status and information
     """
     try:
-        result = deletion_service.delete_document(document_id)
+        result = get_deletion_service().delete_document(document_id)
         
         if not result["success"]:
             status_code = 404 if result["error"] == "DOCUMENT_NOT_FOUND" else 500
