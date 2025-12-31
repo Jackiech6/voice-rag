@@ -1,0 +1,1134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice to RAG System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2em;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 0.9em;
+        }
+
+        .query-section {
+            margin-bottom: 30px;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        #queryInput {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        #queryInput:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .btn-record {
+            background: #e74c3c;
+            color: white;
+            min-width: 120px;
+        }
+
+        .btn-record:hover:not(:disabled) {
+            background: #c0392b;
+        }
+
+        .btn-record.recording {
+            background: #27ae60;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .status {
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+
+        .status.info {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+
+        .status.error {
+            background: #ffebee;
+            color: #c62828;
+        }
+
+        .status.success {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+
+        .status.loading {
+            background: #fff3e0;
+            color: #e65100;
+        }
+
+        .answer-section {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .answer-text {
+            line-height: 1.8;
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 16px;
+        }
+
+        .citation {
+            color: #667eea;
+            cursor: pointer;
+            text-decoration: underline;
+            font-weight: 500;
+            background: rgba(102, 126, 234, 0.1);
+            padding: 2px 4px;
+            border-radius: 3px;
+            transition: all 0.2s;
+        }
+
+        .citation:hover {
+            color: #5568d3;
+            background: rgba(102, 126, 234, 0.2);
+            transform: scale(1.05);
+        }
+
+        .citation.active {
+            background: rgba(102, 126, 234, 0.3);
+            font-weight: 600;
+        }
+
+        /* Modal for citation details */
+        .citation-modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            animation: fadeIn 0.3s;
+        }
+
+        .citation-modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .citation-modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            animation: slideUp 0.3s;
+        }
+
+        .citation-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .citation-modal-title {
+            font-size: 1.3em;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .citation-modal-close {
+            background: #e0e0e0;
+            border: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .citation-modal-close:hover {
+            background: #d0d0d0;
+            transform: rotate(90deg);
+        }
+
+        .citation-modal-body {
+            color: #666;
+            line-height: 1.8;
+            font-size: 15px;
+        }
+
+        .citation-modal-source {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #e0e0e0;
+            font-size: 13px;
+            color: #999;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        /* File Upload Styles */
+        .upload-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 2px dashed #e0e0e0;
+            transition: all 0.3s;
+        }
+
+        .upload-section.drag-over {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .upload-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .upload-title {
+            font-weight: 600;
+            color: #333;
+            font-size: 1.1em;
+        }
+
+        .upload-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 30px;
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .upload-area:hover {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.02);
+        }
+
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+
+        .upload-text {
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .upload-hint {
+            color: #999;
+            font-size: 12px;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .upload-button {
+            margin-top: 15px;
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .upload-button:hover:not(:disabled) {
+            background: #5568d3;
+        }
+
+        .upload-button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .upload-progress {
+            margin-top: 15px;
+            width: 100%;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+            display: none;
+        }
+
+        .upload-progress.active {
+            display: block;
+        }
+
+        .upload-progress-bar {
+            height: 100%;
+            background: #667eea;
+            width: 0%;
+            transition: width 0.3s;
+        }
+
+        .documents-list {
+            margin-top: 20px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .document-item {
+            background: white;
+            padding: 12px;
+            margin-bottom: 8px;
+            border-radius: 6px;
+            border-left: 3px solid #667eea;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.2s;
+        }
+
+        .document-item:hover {
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .document-info {
+            flex: 1;
+        }
+
+        .document-name {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 4px;
+            font-size: 15px;
+        }
+
+        .document-file-name {
+            font-size: 13px;
+            color: #667eea;
+            margin-bottom: 4px;
+            font-family: monospace;
+        }
+
+        .document-meta {
+            font-size: 12px;
+            color: #999;
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .document-meta-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .document-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-delete {
+            padding: 6px 12px;
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+
+        .btn-delete:hover {
+            background: #c82333;
+        }
+
+        .btn-delete:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .btn-refresh {
+            padding: 6px 12px;
+            background: #f0f0f0;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+
+        .btn-refresh:hover {
+            background: #e0e0e0;
+        }
+
+        .citations-list {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 2px solid #e0e0e0;
+        }
+
+        .citation-item {
+            background: white;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .citation-header {
+            font-weight: 600;
+            color: #667eea;
+            margin-bottom: 8px;
+        }
+
+        .citation-text {
+            color: #666;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .retrieved-chunks {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 2px solid #e0e0e0;
+        }
+
+        .chunk-item {
+            background: white;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .chunk-header {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .chunk-text {
+            color: #666;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .similarity-score {
+            color: #999;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Voice to RAG System</h1>
+        <p class="subtitle">Ask questions using voice or text, get answers grounded in your documents</p>
+
+        <!-- Document Upload Section -->
+        <div class="upload-section" id="uploadSection">
+            <div class="upload-header">
+                <div class="upload-title">Upload Documents</div>
+                <button class="btn-refresh" id="refreshDocumentsBtn" onclick="loadDocuments()">Refresh</button>
+            </div>
+            <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
+                <div class="upload-icon">📁</div>
+                <div class="upload-text">Click to upload or drag and drop</div>
+                <div class="upload-hint">PDF, TXT, or MD files (max 50MB)</div>
+                <input type="file" id="fileInput" class="file-input" accept=".pdf,.txt,.md" onchange="handleFileSelect(event)">
+            </div>
+            <div class="upload-progress" id="uploadProgress">
+                <div class="upload-progress-bar" id="uploadProgressBar"></div>
+            </div>
+            <div class="documents-list" id="documentsList"></div>
+        </div>
+
+        <div class="query-section">
+            <div id="statusMessage" class="status hidden"></div>
+            
+            <div class="input-group">
+                <input 
+                    type="text" 
+                    id="queryInput" 
+                    placeholder="Type your question or use voice recording..."
+                    autocomplete="off"
+                >
+                <button id="recordBtn" class="btn-record">Record</button>
+                <button id="submitBtn" class="btn-primary">Submit</button>
+            </div>
+
+            <div id="transcriptSection" class="hidden" style="margin-top: 15px;">
+                <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #333;">Transcript (editable):</label>
+                <textarea 
+                    id="transcriptInput" 
+                    style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px; min-height: 80px;"
+                    placeholder="Transcription will appear here..."
+                ></textarea>
+            </div>
+        </div>
+
+        <div id="answerSection" class="answer-section hidden">
+            <h2 style="margin-bottom: 15px; color: #333;">Answer</h2>
+            <div id="answerText" class="answer-text"></div>
+            
+            <div id="citationsList" class="citations-list hidden"></div>
+            
+            <div id="retrievedChunks" class="retrieved-chunks hidden"></div>
+        </div>
+    </div>
+
+    <!-- Citation Modal -->
+    <div id="citationModal" class="citation-modal">
+        <div class="citation-modal-content">
+            <div class="citation-modal-header">
+                <div class="citation-modal-title">Citation Details</div>
+                <button class="citation-modal-close" id="citationModalClose">&times;</button>
+            </div>
+            <div class="citation-modal-body" id="citationModalBody"></div>
+            <div class="citation-modal-source" id="citationModalSource"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:8000';
+        
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let isRecording = false;
+
+        const queryInput = document.getElementById('queryInput');
+        const recordBtn = document.getElementById('recordBtn');
+        const submitBtn = document.getElementById('submitBtn');
+        const statusMessage = document.getElementById('statusMessage');
+        const transcriptSection = document.getElementById('transcriptSection');
+        const transcriptInput = document.getElementById('transcriptInput');
+        const answerSection = document.getElementById('answerSection');
+        const answerText = document.getElementById('answerText');
+        const citationsList = document.getElementById('citationsList');
+        const retrievedChunks = document.getElementById('retrievedChunks');
+
+        // Show status message
+        function showStatus(message, type = 'info') {
+            statusMessage.textContent = message;
+            statusMessage.className = `status ${type}`;
+            statusMessage.classList.remove('hidden');
+        }
+
+        // Hide status message
+        function hideStatus() {
+            statusMessage.classList.add('hidden');
+        }
+
+        // Record button click
+        recordBtn.addEventListener('click', async () => {
+            if (!isRecording) {
+                await startRecording();
+            } else {
+                stopRecording();
+            }
+        });
+
+        // Start recording
+        async function startRecording() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+
+                mediaRecorder.ondataavailable = (event) => {
+                    audioChunks.push(event.data);
+                };
+
+                mediaRecorder.onstop = async () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    await transcribeAudio(audioBlob);
+                    stream.getTracks().forEach(track => track.stop());
+                };
+
+                mediaRecorder.start();
+                isRecording = true;
+                recordBtn.textContent = '⏹ Stop';
+                recordBtn.classList.add('recording');
+                showStatus('Recording... Speak now', 'info');
+            } catch (error) {
+                showStatus('Microphone access denied. Please use text input instead.', 'error');
+                console.error('Error accessing microphone:', error);
+            }
+        }
+
+        // Stop recording
+        function stopRecording() {
+            if (mediaRecorder && isRecording) {
+                mediaRecorder.stop();
+                isRecording = false;
+                recordBtn.textContent = '🎤 Record';
+                recordBtn.classList.remove('recording');
+                showStatus('Processing audio...', 'loading');
+            }
+        }
+
+        // Transcribe audio
+        async function transcribeAudio(audioBlob) {
+            try {
+                showStatus('Transcribing audio...', 'loading');
+                
+                const formData = new FormData();
+                formData.append('audio', audioBlob, 'recording.webm');
+
+                const response = await fetch(`${API_URL}/transcribe`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({ detail: 'Transcription failed' }));
+                    throw new Error(errorData.detail || 'Transcription failed');
+                }
+
+                const data = await response.json();
+                
+                if (data.transcript && data.transcript.trim()) {
+                    transcriptInput.value = data.transcript;
+                    queryInput.value = data.transcript;
+                    transcriptSection.classList.remove('hidden');
+                    showStatus(`Transcription complete (${data.language || 'en'}). Edit if needed, then submit.`, 'success');
+                } else {
+                    throw new Error('Empty transcript received');
+                }
+            } catch (error) {
+                showStatus(`Transcription failed: ${error.message}. Please use text input instead.`, 'error');
+                console.error('Transcription error:', error);
+                // Show transcript section anyway so user can type manually
+                transcriptSection.classList.remove('hidden');
+            }
+        }
+
+        // Submit query
+        submitBtn.addEventListener('click', async () => {
+            const query = queryInput.value.trim() || transcriptInput.value.trim();
+            
+            if (!query) {
+                showStatus('Please enter a question', 'error');
+                return;
+            }
+
+            await processQuery(query);
+        });
+
+        // Process query
+        async function processQuery(queryText) {
+            try {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = 'Processing<span class="loading-spinner"></span>';
+                showStatus('Retrieving and generating answer...', 'loading');
+                answerSection.classList.add('hidden');
+
+                const response = await fetch(`${API_URL}/query`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ text: queryText })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Query failed');
+                }
+
+                const data = await response.json();
+                displayAnswer(data);
+                showStatus(`Answer generated in ${data.latency_ms.toFixed(0)}ms`, 'success');
+            } catch (error) {
+                let errorMessage = 'Error processing query';
+                if (error.message) {
+                    errorMessage = error.message;
+                } else if (error instanceof Error) {
+                    errorMessage = error.message;
+                }
+                showStatus(errorMessage, 'error');
+                console.error('Query error:', error);
+                
+                // Show error in answer section
+                answerSection.classList.remove('hidden');
+                answerText.innerHTML = `<div style="color: #c62828; padding: 20px; background: #ffebee; border-radius: 8px; border-left: 4px solid #c62828;">
+                    <strong>Error:</strong> ${errorMessage}<br><br>
+                    Please try again or use a different question. If the problem persists, check your internet connection and API configuration.
+                </div>`;
+                citationsList.classList.add('hidden');
+                retrievedChunks.classList.add('hidden');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Submit';
+            }
+        }
+
+        // Citation modal elements
+        const citationModal = document.getElementById('citationModal');
+        const citationModalClose = document.getElementById('citationModalClose');
+        const citationModalBody = document.getElementById('citationModalBody');
+        const citationModalSource = document.getElementById('citationModalSource');
+
+        // Close modal handlers
+        citationModalClose.addEventListener('click', () => {
+            citationModal.classList.remove('active');
+        });
+
+        citationModal.addEventListener('click', (e) => {
+            if (e.target === citationModal) {
+                citationModal.classList.remove('active');
+            }
+        });
+
+        // Close modal on Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && citationModal.classList.contains('active')) {
+                citationModal.classList.remove('active');
+            }
+        });
+
+        // Display answer
+        function displayAnswer(data) {
+            // Store citations data for modal
+            window.currentCitations = data.citations || [];
+            
+            // Display answer text with clickable citations
+            let answerHtml = data.answer;
+            
+            // Make citations clickable with click handlers
+            answerHtml = answerHtml.replace(/\[(\d+)\]/g, (match, num) => {
+                const citationNum = parseInt(num);
+                return `<span class="citation" data-citation="${citationNum}" onclick="showCitationModal(${citationNum - 1})">[${num}]</span>`;
+            });
+            answerText.innerHTML = answerHtml;
+
+            // Display citations
+            if (data.citations && data.citations.length > 0) {
+                citationsList.innerHTML = '<h3 style="margin-bottom: 15px; color: #333;">Citations</h3>';
+                data.citations.forEach((citation, index) => {
+                    const citationDiv = document.createElement('div');
+                    citationDiv.className = 'citation-item';
+                    citationDiv.style.cursor = 'pointer';
+                    citationDiv.onclick = () => showCitationModal(index);
+                    citationDiv.innerHTML = `
+                        <div class="citation-header">[${index + 1}] ${citation.document_title} - Page ${citation.page}</div>
+                        <div class="citation-text">${citation.text.substring(0, 150)}${citation.text.length > 150 ? '...' : ''}</div>
+                    `;
+                    citationsList.appendChild(citationDiv);
+                });
+                citationsList.classList.remove('hidden');
+            } else {
+                citationsList.classList.add('hidden');
+            }
+
+            // Display retrieved chunks with highlighting
+            if (data.retrieved_chunks && data.retrieved_chunks.length > 0) {
+                retrievedChunks.innerHTML = '<h3 style="margin-bottom: 15px; color: #333;">Retrieved Passages</h3>';
+                data.retrieved_chunks.forEach((chunk, index) => {
+                    const chunkDiv = document.createElement('div');
+                    chunkDiv.className = 'chunk-item';
+                    const metadata = chunk.metadata || {};
+                    const isCited = data.citations && data.citations.some(c => c.id === chunk.id);
+                    if (isCited) {
+                        chunkDiv.style.borderLeft = '4px solid #667eea';
+                        chunkDiv.style.background = 'rgba(102, 126, 234, 0.05)';
+                    }
+                    chunkDiv.innerHTML = `
+                        <div class="chunk-header">${metadata.document_title || 'Unknown'} - Page ${metadata.page || '?'} ${isCited ? '<span style="color: #667eea; font-size: 12px;">(Cited)</span>' : ''}</div>
+                        <div class="chunk-text">${chunk.text}</div>
+                        <div class="similarity-score">Similarity: ${(chunk.similarity_score * 100).toFixed(1)}%</div>
+                    `;
+                    retrievedChunks.appendChild(chunkDiv);
+                });
+                retrievedChunks.classList.remove('hidden');
+            } else {
+                retrievedChunks.classList.add('hidden');
+            }
+
+            answerSection.classList.remove('hidden');
+        }
+
+        // Show citation modal
+        function showCitationModal(index) {
+            if (!window.currentCitations || index < 0 || index >= window.currentCitations.length) {
+                return;
+            }
+
+            const citation = window.currentCitations[index];
+            citationModalBody.textContent = citation.text;
+            citationModalSource.textContent = `Source: ${citation.document_title} - Page ${citation.page}`;
+            citationModal.classList.add('active');
+
+            // Highlight the clicked citation in the answer
+            document.querySelectorAll('.citation').forEach(cit => {
+                cit.classList.remove('active');
+                if (cit.getAttribute('data-citation') == (index + 1).toString()) {
+                    cit.classList.add('active');
+                }
+            });
+        }
+
+        // Make function globally available
+        window.showCitationModal = showCitationModal;
+
+        // Allow Enter key to submit
+        queryInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                submitBtn.click();
+            }
+        });
+
+        transcriptInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && e.ctrlKey) {
+                submitBtn.click();
+            }
+        });
+
+        // File Upload Functionality
+        const fileInput = document.getElementById('fileInput');
+        const uploadArea = document.getElementById('uploadArea');
+        const uploadProgress = document.getElementById('uploadProgress');
+        const uploadProgressBar = document.getElementById('uploadProgressBar');
+        const documentsList = document.getElementById('documentsList');
+        const uploadSection = document.getElementById('uploadSection');
+
+        // Drag and drop handlers
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadSection.classList.add('drag-over');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadSection.classList.remove('drag-over');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadSection.classList.remove('drag-over');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                fileInput.files = files;
+                handleFileSelect({ target: { files: files } });
+            }
+        });
+
+        // Handle file selection
+        async function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            // Validate file type
+            const allowedTypes = ['.pdf', '.txt', '.md'];
+            const fileExt = '.' + file.name.split('.').pop().toLowerCase();
+            if (!allowedTypes.includes(fileExt)) {
+                showStatus('Unsupported file type. Please upload PDF, TXT, or MD files.', 'error');
+                return;
+            }
+
+            // Validate file size (50MB)
+            const maxSize = 50 * 1024 * 1024;
+            if (file.size > maxSize) {
+                showStatus('File too large. Maximum size is 50MB.', 'error');
+                return;
+            }
+
+            await uploadFile(file);
+        }
+
+        // Upload file
+        async function uploadFile(file) {
+            try {
+                showStatus(`Uploading ${file.name}...`, 'loading');
+                uploadProgress.classList.add('active');
+                uploadProgressBar.style.width = '30%';
+
+                const formData = new FormData();
+                formData.append('file', file);
+
+                uploadProgressBar.style.width = '60%';
+
+                const response = await fetch(`${API_URL}/documents/upload`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                uploadProgressBar.style.width = '90%';
+
+                if (!response.ok) {
+                    let errorMessage = 'Upload failed';
+                    try {
+                        const errorData = await response.json();
+                        errorMessage = errorData.detail || errorData.message || `Upload failed (${response.status})`;
+                    } catch (e) {
+                        // If response is not JSON, try to get text
+                        try {
+                            const text = await response.text();
+                            errorMessage = text || `Upload failed (${response.status} ${response.statusText})`;
+                        } catch (textError) {
+                            errorMessage = `Upload failed: ${response.status} ${response.statusText}`;
+                        }
+                    }
+                    throw new Error(errorMessage);
+                }
+
+                const data = await response.json();
+                uploadProgressBar.style.width = '100%';
+
+                if (data.success) {
+                    if (data.already_exists) {
+                        showStatus(`Document already exists: ${data.title} (ID: ${data.document_id})`, 'info');
+                    } else {
+                        showStatus(`Successfully uploaded: ${data.title} (${data.chunks_created} chunks)`, 'success');
+                    }
+                    
+                    // Reset file input
+                    fileInput.value = '';
+                    
+                    // Load documents list
+                    await loadDocuments();
+                } else {
+                    throw new Error(data.message || 'Upload failed');
+                }
+
+                setTimeout(() => {
+                    uploadProgress.classList.remove('active');
+                    uploadProgressBar.style.width = '0%';
+                }, 1000);
+
+            } catch (error) {
+                showStatus(`Upload failed: ${error.message}`, 'error');
+                uploadProgress.classList.remove('active');
+                uploadProgressBar.style.width = '0%';
+                console.error('Upload error:', error);
+            }
+        }
+
+        // Format file size
+        function formatFileSize(bytes) {
+            if (!bytes) return 'Unknown';
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        }
+
+        // Format file type
+        function formatFileType(type) {
+            return type.toUpperCase();
+        }
+
+        // Delete document
+        async function deleteDocument(documentId, documentTitle) {
+            if (!confirm(`Are you sure you want to delete "${documentTitle}"?\n\nThis will remove all chunks and cannot be undone.`)) {
+                return;
+            }
+
+            try {
+                showStatus(`Deleting ${documentTitle}...`, 'loading');
+                
+                const response = await fetch(`${API_URL}/documents/${documentId}`, {
+                    method: 'DELETE'
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({ detail: 'Delete failed' }));
+                    throw new Error(errorData.detail || `Delete failed (${response.status})`);
+                }
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    showStatus(`Successfully deleted: ${data.title} (${data.chunks_deleted} chunks removed)`, 'success');
+                    // Reload documents list
+                    await loadDocuments();
+                } else {
+                    throw new Error(data.message || 'Delete failed');
+                }
+            } catch (error) {
+                showStatus(`Delete failed: ${error.message}`, 'error');
+                console.error('Delete error:', error);
+            }
+        }
+
+        // Load documents list
+        async function loadDocuments() {
+            try {
+                const response = await fetch(`${API_URL}/documents`);
+                
+                if (!response.ok) {
+                    throw new Error('Failed to load documents');
+                }
+
+                const data = await response.json();
+                
+                if (data.documents && data.documents.length > 0) {
+                    documentsList.innerHTML = '<div style="font-weight: 600; margin-bottom: 10px; color: #333;">Ingested Documents:</div>';
+                    
+                    data.documents.forEach(doc => {
+                        const docDiv = document.createElement('div');
+                        docDiv.className = 'document-item';
+                        docDiv.id = `doc-${doc.id}`;
+                        
+                        const date = new Date(doc.created_at).toLocaleDateString();
+                        const fileSize = formatFileSize(doc.file_size);
+                        const fileType = formatFileType(doc.file_type);
+                        
+                        docDiv.innerHTML = `
+                            <div class="document-info">
+                                <div class="document-name">${doc.title}</div>
+                                <div class="document-file-name">${doc.file_name || doc.title}</div>
+                                <div class="document-meta">
+                                    <span class="document-meta-item">ID: ${doc.id}</span>
+                                    <span class="document-meta-item">${doc.chunks_count} chunks</span>
+                                    <span class="document-meta-item">${fileType}</span>
+                                    ${doc.file_size ? `<span class="document-meta-item">${fileSize}</span>` : ''}
+                                    <span class="document-meta-item">${date}</span>
+                                </div>
+                            </div>
+                            <div class="document-actions">
+                                <button class="btn-delete" onclick="deleteDocument(${doc.id}, '${doc.title.replace(/'/g, "\\'")}')" title="Delete document">
+                                    Delete
+                                </button>
+                            </div>
+                        `;
+                        documentsList.appendChild(docDiv);
+                    });
+                } else {
+                    documentsList.innerHTML = '<div style="color: #999; text-align: center; padding: 20px;">No documents uploaded yet</div>';
+                }
+            } catch (error) {
+                console.error('Error loading documents:', error);
+                documentsList.innerHTML = '<div style="color: #c62828; text-align: center; padding: 20px;">Error loading documents</div>';
+            }
+        }
+
+        // Load documents on page load
+        loadDocuments();
+    </script>
+</body>
+</html>
+

@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: voice-rag
+    env: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: HOST
+        value: 0.0.0.0
+      - key: PORT
+        value: 8000
+    healthCheckPath: /health
+    plan: starter
+
