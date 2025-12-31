@@ -2,6 +2,7 @@
 from fastapi import FastAPI, HTTPException, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 import time
@@ -110,7 +111,15 @@ class DocumentsListResponse(BaseModel):
 
 @app.get("/")
 async def root():
-    """Root endpoint - redirect to static page if available."""
+    """Root endpoint - serve index.html."""
+    index_path = os.path.join(static_dir, "index.html")
+    if os.path.exists(index_path):
+        return FileResponse(
+            path=index_path,
+            media_type="text/html"
+        )
+    
+    # Fallback if static files not found
     return {
         "message": "Voice to RAG API",
         "version": "1.0.0",
