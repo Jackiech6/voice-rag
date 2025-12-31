@@ -5,7 +5,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # OpenAI Configuration
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+# Try multiple environment variable names (Railway might use different names)
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY") or os.getenv("OPENAI_KEY") or os.getenv("API_KEY")
 # Note: API key validation happens when services are initialized, not here
 
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
